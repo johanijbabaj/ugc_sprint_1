@@ -22,6 +22,21 @@ user_group = db.Table(
     schema="auth",
 )
 
+users_status_list = db.Table(
+    "users_status_list",
+    db.Column(
+        "id",
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    ),
+    db.Column(db.String, nullable=False),
+    extend_existing=True,
+    schema="auth",
+)
+
 
 class User(db.Model):
     """Зарегистрированный в системе пользователь"""
