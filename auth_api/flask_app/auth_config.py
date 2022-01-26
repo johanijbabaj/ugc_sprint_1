@@ -1,3 +1,4 @@
+import hashlib
 import os
 from datetime import timedelta
 
@@ -16,6 +17,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     ACCESS_EXPIRES = timedelta(hours=1)
+    SECRET_KEY = hashlib.md5('super_secret'.encode()).hexdigest()
     SWAGGER_TEMPLATE = {
         "securityDefinitions": {
             "APIKeyHeader": {
@@ -27,6 +29,9 @@ class Config:
         }
     }
     MIGRATIONS_PATH = os.getenv("MIGRATIONS_PATH")
+    YANDEX_ID = os.getenv("YANDEX_ID")
+    YANDEX_PASSWORD = os.getenv('YANDEX_PASSWORD')
+
 
 
 db = SQLAlchemy(session_options={"autoflush": False})
