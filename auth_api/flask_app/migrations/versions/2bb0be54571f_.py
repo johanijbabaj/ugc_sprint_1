@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: c9179e686cbe
+Revision ID: 2bb0be54571f
 Revises: 
-Create Date: 2022-01-22 21:31:57.231845
+Create Date: 2022-01-27 06:04:26.343202
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'c9179e686cbe'
+revision = '2bb0be54571f'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,6 +27,13 @@ def upgrade():
     sa.UniqueConstraint('name'),
     schema='auth'
     )
+    op.create_table('user_status_list',
+    sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+    sa.Column('status', sa.String(), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('id'),
+    schema='auth'
+    )
     op.create_table('user',
     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
     sa.Column('login', sa.String(), nullable=False),
@@ -38,6 +45,8 @@ def upgrade():
     sa.Column('address', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('status_id', postgresql.UUID(as_uuid=True), nullable=True),
+    sa.ForeignKeyConstraint(['status_id'], ['auth.user_status_list.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('id'),
@@ -72,5 +81,6 @@ def downgrade():
     op.drop_table('user_group_rel', schema='auth')
     op.drop_table('history', schema='auth')
     op.drop_table('user', schema='auth')
+    op.drop_table('user_status_list', schema='auth')
     op.drop_table('group', schema='auth')
     # ### end Alembic commands ###

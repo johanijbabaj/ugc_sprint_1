@@ -22,21 +22,6 @@ user_group = db.Table(
     schema="auth",
 )
 
-users_status_list = db.Table(
-    "users_status_list",
-    db.Column(
-        "id",
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        unique=True,
-        nullable=False,
-    ),
-    db.Column(db.String, nullable=False),
-    extend_existing=True,
-    schema="auth",
-)
-
 
 class User(db.Model):
     """Зарегистрированный в системе пользователь"""
@@ -63,6 +48,9 @@ class User(db.Model):
 
     groups = db.relationship(
         "Group", secondary=user_group, lazy="subquery", back_populates="users"
+    )
+    status_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("auth.user_status_list.id"), nullable=True
     )
 
     @property
@@ -103,7 +91,12 @@ class User(db.Model):
         URL для доступа к информации о пользователе, с указанным
         префиксом.
         """
-        obj = {"id": self.id, "login": self.login, "email": self.email}
+        obj = {
+            "id": self.id,
+            "login": self.login,
+            "email": self.email,
+            "status": str(self.status),
+        }
         if url_prefix:
             obj["url"] = f"{url_prefix}/user/account/{self.login}"
         return obj
@@ -125,6 +118,28 @@ class User(db.Model):
             return History.query.filter(History.user_id == self.id).order_by(
                 History.timestamp.desc()
             )
+
+
+class UserStatusList(db.Model):
+    """Зарегистрированный в системе пользователь"""
+
+    __table_args__ = {"schema": "auth", "extend_existing": True}
+    __tablename__ = "user_status_list"
+
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    status = db.Column(db.String, nullable=False)
+    users = db.relationship(
+        "User", lazy=True, backref=db.backref("status", lazy="joined")
+    )
+
+    def __repr__(self):
+        return self.status
 
 
 class Group(db.Model):
