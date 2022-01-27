@@ -119,7 +119,7 @@ def add_group_user(group_id):
     # FIXME: Через Swagger не работает
     # user_id = request.args["user_id"]
     user_id = request.json["user_id"]
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     group.users.append(user)
@@ -143,7 +143,7 @@ def get_membership(group_id, user_id):
     group = Group.query.get(group_id)
     if group is None:
         return jsonify({"error": "group not found"}), HTTPStatus.NOT_FOUND
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     if user not in group.users:
@@ -158,7 +158,7 @@ def del_membership(group_id, user_id):
     """
     Удалить пользователя из группы
     """
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     group = Group.query.get(group_id)

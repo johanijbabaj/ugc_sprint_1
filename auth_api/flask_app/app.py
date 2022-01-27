@@ -13,7 +13,6 @@ from db_models import Group, User
 from flasgger import Swagger
 from flask import Flask
 from flask_migrate import init, migrate, upgrade
-
 from groups_bp.groups_bp import groups_bp
 from password_hash import check_password, hash_password
 from test_bp.test_bp import test_bp
@@ -43,11 +42,23 @@ def db_initialize(app):
             db.close_all_sessions()
             db.drop_all()
             if os.path.isdir(Config.MIGRATIONS_PATH):
-                shutil.rmtree(Config.MIGRATIONS_PATH)
+                # shutil.rmtree(Config.MIGRATIONS_PATH)
                 engine.execute("DELETE FROM alembic_version")
+                engine.execute(
+                    "INSERT INTO alembic_version(version_num) VALUES ('initial_script')"
+                )
             init(Config.MIGRATIONS_PATH)
-            migrate(Config.MIGRATIONS_PATH)
+            migrate(Config.MIGRATIONS_PATH, message="Initial migration")
             upgrade(Config.MIGRATIONS_PATH)
+            engine.execute(
+                """ALTER TABLE auth.user ATTACH PARTITION auth.user_active
+                FOR VALUES IN (False);"""
+            )
+            engine.execute(
+                """ALTER TABLE auth.user ATTACH PARTITION auth.user_deleted
+                FOR VALUES IN (True);"""
+            )
+            db.session.commit()
             # db.create_all()
             admin_group = Group(name="admin", description="Administrators")
             admin_user = User(
@@ -55,12 +66,21 @@ def db_initialize(app):
                 email="root@localhost",
                 password_hash="",
                 full_name="Site administrator",
+                deleted=False,
             )
             regular_user = User(
                 login="nobody",
                 email="nobody@localhost",
                 password_hash="",
                 full_name="Regular user",
+                deleted=False,
+            )
+            deleted_user = User(
+                login="deleted",
+                email="deeted@localhost",
+                password_hash="",
+                full_name="Regular user",
+                deleted=True,
             )
             # Берем пароли из переменных окружения
             admin_user.password = os.getenv("ADMIN_PASSWORD")
@@ -68,6 +88,7 @@ def db_initialize(app):
             db.session.add(admin_group)
             db.session.add(admin_user)
             db.session.add(regular_user)
+            db.session.add(deleted_user)
             db.session.commit()
             # Только после первого коммита пользователь и группа получат
             # автосгенерированные UUID
