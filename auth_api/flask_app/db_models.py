@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from auth_config import db
+from sqlalchemy import DDL, ForeignKeyConstraint, MetaData, UniqueConstraint, event
 from sqlalchemy.dialects.postgresql import UUID
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -16,100 +17,15 @@ user_group = db.Table(
         unique=True,
         nullable=False,
     ),
-    db.Column("user_id", UUID(as_uuid=True), db.ForeignKey("auth.user.id")),
+    db.Column("user_id", UUID(as_uuid=True)),
+    db.Column("user_deleted", db.Boolean),
     db.Column("group_id", UUID(as_uuid=True), db.ForeignKey("auth.group.id")),
+    ForeignKeyConstraint(
+        ["user_id", "user_deleted"], ["auth.user.id", "auth.user.deleted"]
+    ),
     extend_existing=True,
     schema="auth",
 )
-
-
-class User(db.Model):
-    """Зарегистрированный в системе пользователь"""
-
-    __table_args__ = {"schema": "auth", "extend_existing": True}
-    __tablename__ = "user"
-
-    id = db.Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        unique=True,
-        nullable=False,
-    )
-    login = db.Column(db.String, unique=True, nullable=False)
-    email = db.Column(db.String, unique=True, nullable=False)
-    password_hash = db.Column(db.String, nullable=False)
-    full_name = db.Column(db.String, nullable=False)
-    phone = db.Column(db.String)
-    avatar_link = db.Column(db.String)
-    address = db.Column(db.String)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
-    groups = db.relationship(
-        "Group", secondary=user_group, lazy="subquery", back_populates="users"
-    )
-
-    @property
-    def password(self):
-        raise AttributeError("Could not get password from password hash")
-
-    @password.setter
-    def password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def verify_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def __repr__(self):
-        return f"<User {self.login}>"
-
-    def in_group(self, group_id):
-        """Проверить, состоит ли пользователь в указанной группе"""
-        return self.groups.filter_by(group_id=group_id).first() is not None
-
-    def get_all_groups(self):
-        """Список всех групп, в которых состоит пользователь"""
-        return self.groups
-
-    def is_admin(self):
-        """Состоит ли пользователь в группе администраторов"""
-        groups = self.groups
-        for g in groups:
-            if g.is_admin():
-                return True
-        return False
-
-    def to_json(self, *, url_prefix: Optional[str] = None):
-        """
-        Преобразовать запись пользователя в объект для сериализации в Python
-
-        Если задан параметр url_prefix то дополнительно вернуть
-        URL для доступа к информации о пользователе, с указанным
-        префиксом.
-        """
-        obj = {"id": self.id, "login": self.login, "email": self.email}
-        if url_prefix:
-            obj["url"] = f"{url_prefix}/user/account/{self.login}"
-        return obj
-
-    def get_history(self, since: Optional[datetime.datetime] = None):
-        """
-        Вернуть историю действий этого пользователя
-
-        Если задан параметр since, то вернуть только действия, которые
-        были позже указанной метки времени
-        """
-        if since:
-            return (
-                History.query.filter(History.user_id == self.id)
-                .filter(History.timestamp >= since)
-                .order_by(History.timestamp.desc())
-            )
-        else:
-            return History.query.filter(History.user_id == self.id).order_by(
-                History.timestamp.desc()
-            )
 
 
 class Group(db.Model):
@@ -172,8 +88,153 @@ class Group(db.Model):
         )
 
 
-class History(db.Model):
+class UserMixin:
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        nullable=False,
+    )
+    login = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False)
+    password_hash = db.Column(db.String, nullable=False)
+    full_name = db.Column(db.String, nullable=False)
+    phone = db.Column(db.String)
+    avatar_link = db.Column(db.String)
+    address = db.Column(db.String)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False, nullable=False, primary_key=True)
+
+
+class User(UserMixin, db.Model):
+    """Зарегистрированный в системе пользователь"""
+
+    __tablename__ = "user"
+    __table_args__ = (
+        UniqueConstraint("id", "deleted"),
+        {
+            "schema": "auth",
+            "postgresql_partition_by": "LIST (deleted)",
+            "extend_existing": True,
+        },
+    )
+    groups = db.relationship(
+        "Group", secondary=user_group, lazy="subquery", back_populates="users"
+    )
+
+    @property
+    def password(self):
+        raise AttributeError("Could not get password from password hash")
+
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<User {self.login}>"
+
+    def in_group(self, group_id):
+        """Проверить, состоит ли пользователь в указанной группе"""
+        return self.groups.filter_by(group_id=group_id).first() is not None
+
+    def get_all_groups(self):
+        """Список всех групп, в которых состоит пользователь"""
+        return self.groups
+
+    def is_admin(self):
+        """Состоит ли пользователь в группе администраторов"""
+        groups = self.groups
+        for g in groups:
+            if g.is_admin():
+                return True
+        return False
+
+    def to_json(self, *, url_prefix: Optional[str] = None):
+        """
+        Преобразовать запись пользователя в объект для сериализации в Python
+
+        Если задан параметр url_prefix то дополнительно вернуть
+        URL для доступа к информации о пользователе, с указанным
+        префиксом.
+        """
+        obj = {
+            "id": self.id,
+            "login": self.login,
+            "email": self.email,
+        }
+        if url_prefix:
+            obj["url"] = f"{url_prefix}/user/account/{self.login}"
+        return obj
+
+    def get_history(self, since: Optional[datetime.datetime] = None):
+        """
+        Вернуть историю действий этого пользователя
+
+        Если задан параметр since, то вернуть только действия, которые
+        были позже указанной метки времени
+        """
+        if since:
+            return (
+                History.query.filter(History.user_id == self.id)
+                .filter(History.timestamp >= since)
+                .order_by(History.timestamp.desc())
+            )
+        else:
+            return History.query.filter(History.user_id == self.id).order_by(
+                History.timestamp.desc()
+            )
+
+
+class UserActive(UserMixin, db.Model):
+    __tablename__ = "user_active"
     __table_args__ = {"schema": "auth", "extend_existing": True}
+
+
+class UserDeleted(UserMixin, db.Model):
+    __tablename__ = "user_deleted"
+    __table_args__ = {"schema": "auth", "extend_existing": True}
+
+
+UserActive.__table__.add_is_dependent_on(User.__table__)
+UserDeleted.__table__.add_is_dependent_on(User.__table__)
+
+
+# FIXME:  так и не получилось заставить работать event.listen
+@event.listens_for(UserDeleted.__table__, "after_create")
+def create_user_deleted_after_create(**kw):
+    DDL(
+        """ALTER TABLE auth.user ATTACH PARTITION auth.user_deleted
+        FOR VALUES IN (True);"""
+    )
+
+
+@event.listens_for(UserDeleted.__table__, "after_create")
+def create_user_active_after_create(**kw):
+    DDL(
+        """ALTER TABLE auth.user ATTACH PARTITION auth.user_active
+        FOR VALUES IN (False);"""
+    )
+
+
+# event.listen(
+#     UserActive.__table__,
+#     "after_create",
+#     DDL("""ALTER TABLE auth.user ATTACH PARTITION auth.user_active
+#         FOR VALUES in (False);""")
+#     )
+
+
+class History(db.Model):
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "user_deleted"], ["auth.user.id", "auth.user.deleted"]
+        ),
+        {"schema": "auth", "extend_existing": True},
+    )
     __tablename__ = "history"
 
     id = db.Column(
@@ -183,7 +244,8 @@ class History(db.Model):
         unique=True,
         nullable=False,
     )
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("auth.user.id"))
+    user_id = db.Column(UUID(as_uuid=True))
+    user_deleted = db.Column(db.Boolean)
     useragent = db.Column(db.String, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
 

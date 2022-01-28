@@ -186,7 +186,7 @@ def get_user_history(**kwargs):
     Получить историю операций пользователя
     """
 
-    current_user = User.query.get(get_jwt_identity())
+    current_user = User.query.filter_by(id=get_jwt_identity(), deleted=False).first()
     page_size = request.args.get("page_size", None)
     page_number = request.args.get("page_number", 1)
     if not current_user:
