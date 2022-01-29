@@ -1,8 +1,12 @@
+import random
+import string
 from datetime import datetime
 from http import HTTPStatus
 
+from sqlalchemy import or_
+
 from auth_config import Config, db, jwt, jwt_redis
-from db_models import History, User
+from db_models import History, User, SocialAccount
 from flasgger.utils import swag_from
 from flask.json import jsonify
 from flask_jwt_extended import (
@@ -16,16 +20,14 @@ from flask_jwt_extended import (
 from password_hash import check_password, hash_password
 
 from authlib.integrations.flask_client import OAuth
-from flask import current_app as app, url_for, Blueprint, make_response
+from flask import current_app as app, url_for, Blueprint, make_response, request
 
 access_data = {
     'grant_type': 'authorization_code',
-    'client_id': 'b0ecfcd1a5494d25bc697b079e79031a',
-    'client_secret': '2ce38ae3cdb04d99b1285c5965b1e6e2'
 }
 
 oauth = OAuth(app)
-oauth.register('yandex', client_id='b0ecfcd1a5494d25bc697b079e79031a', client_secret='2ce38ae3cdb04d99b1285c5965b1e6e2',
+oauth.register('yandex', client_id=Config.YANDEX_ID, client_secret=Config.YANDEX_PASSWORD,
                authorize_url='https://oauth.yandex.ru/authorize', access_token_url='https://oauth.yandex.ru/token',
                access_token_params=access_data, userinfo_endpoint='https://login.yandex.ru/info', )
 
@@ -240,4 +242,27 @@ def social_user_authorise(social_name: str):
         return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
     token = client.authorize_access_token()
     user_info = oauth.yandex.userinfo()
-    return user_info
+    if not user_info:
+        return make_response({'msg': 'Information not provided'}, HTTPStatus.NOT_FOUND)
+    password = ''.join(random.choice(string.printable) for i in range(10))
+    user = User.query.filter(
+        or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
+    if not user:
+        user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
+        db.session.add(user)
+        db.session.commit()
+        social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
+        db.session.add(social_user)
+        db.session.commit()
+    access_token = create_access_token(identity=user.id)
+    refresh_token = create_refresh_token(identity=user.id)
+    useragent = request.user_agent.string
+    history = History(user_id=user.id, useragent=useragent, timestamp=datetime.now()
+    )
+    db.session.add(history)
+    db.session.commit()
+    token = {
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }
+    return make_response(token, 200)
