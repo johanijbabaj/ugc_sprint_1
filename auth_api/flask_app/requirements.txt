@@ -11,3 +11,4 @@ Werkzeug==2.0.2
 flask-migrate==3.1.0
 Authlib==0.15.5
 requests
+python-dotenv
