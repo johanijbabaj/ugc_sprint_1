@@ -1,3 +1,4 @@
+import logging
 import random
 import string
 from datetime import datetime
@@ -5,6 +6,7 @@ from functools import wraps
 from http import HTTPStatus
 import os
 
+import opentracing
 from sqlalchemy import or_
 
 from auth_config import Config, db, jwt, jwt_redis
@@ -26,6 +28,7 @@ from password_hash import check_password, hash_password
 from authlib.integrations.flask_client import OAuth
 from flask import current_app as app, url_for, Blueprint, make_response, request
 
+
 access_data = {
     'grant_type': 'authorization_code',
 }
@@ -37,6 +40,9 @@ oauth.register('yandex', client_id=Config.YANDEX_ID, client_secret=Config.YANDEX
 
 jwt_redis_blocklist = jwt_redis
 users_bp = Blueprint("users_bp", __name__)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def limit_requests(per_minute: int):
@@ -293,6 +299,8 @@ def create_authorisation_url(social_name: str):
 
 @users_bp.route('/oauth/callback/<string:social_name>', methods=["GET"])
 def social_user_authorise(social_name: str):
+    from app import tracer
+    parent_span = tracer.get_span()
     client = oauth.create_client(social_name)
     if not client:
         return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
@@ -301,22 +309,25 @@ def social_user_authorise(social_name: str):
     if not user_info:
         return make_response({'msg': 'Information not provided'}, HTTPStatus.NOT_FOUND)
     password = ''.join(random.choice(string.printable) for i in range(10))
-    user = User.query.filter(
-        or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
+    with opentracing.tracer.start_span('Get User record db save', child_of=parent_span) as span:
+        user = User.query.filter(
+            or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
     if not user:
-        user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
-        db.session.add(user)
-        db.session.commit()
-        social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
-        db.session.add(social_user)
-        db.session.commit()
+        with opentracing.tracer.start_span('User record db save', child_of=parent_span) as span:
+            user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
+            db.session.add(user)
+            db.session.commit()
+            social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
+            db.session.add(social_user)
+            db.session.commit()
     access_token = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)
     useragent = request.user_agent.string
-    history = History(user_id=user.id, useragent=useragent, timestamp=datetime.now()
-    )
-    db.session.add(history)
-    db.session.commit()
+    with opentracing.tracer.start_span('history record db save', child_of=parent_span) as span:
+        history = History(user_id=user.id, useragent=useragent, timestamp=datetime.now()
+                          )
+        db.session.add(history)
+        db.session.commit()
     token = {
         'access_token': access_token,
         'refresh_token': refresh_token
