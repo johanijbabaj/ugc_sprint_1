@@ -1,12 +1,15 @@
+import random
+import string
 from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
 import os
 
+from sqlalchemy import or_
+
 from auth_config import Config, db, jwt, jwt_redis
-from db_models import History, User
+from db_models import History, User, SocialAccount
 from flasgger.utils import swag_from
-from flask import Blueprint, render_template, request
 from flask.json import jsonify
 from flask_jwt_extended import (
     create_access_token,
@@ -19,6 +22,18 @@ from flask_jwt_extended import (
 import redis
 
 from password_hash import check_password, hash_password
+
+from authlib.integrations.flask_client import OAuth
+from flask import current_app as app, url_for, Blueprint, make_response, request
+
+access_data = {
+    'grant_type': 'authorization_code',
+}
+
+oauth = OAuth(app)
+oauth.register('yandex', client_id=Config.YANDEX_ID, client_secret=Config.YANDEX_PASSWORD,
+               authorize_url='https://oauth.yandex.ru/authorize', access_token_url='https://oauth.yandex.ru/token',
+               access_token_params=access_data, userinfo_endpoint='https://login.yandex.ru/info', )
 
 jwt_redis_blocklist = jwt_redis
 users_bp = Blueprint("users_bp", __name__)
@@ -66,9 +81,9 @@ def list_users(**kwargs):
             users.append(user.to_json())
     else:
         for user in (
-            User.query.order_by(User.login)
-            .paginate(int(page_number), int(page_size), False)
-            .items
+                User.query.order_by(User.login)
+                        .paginate(int(page_number), int(page_size), False)
+                        .items
         ):
             users.append(user.to_json())
     return jsonify(users), HTTPStatus.OK
@@ -120,7 +135,7 @@ def login():
     password = request.args.get("password", None)
     user = User.query.filter_by(login=username).first()
     if (user and user.verify_password(password)) or (
-        username == "test" and password == "test"
+            username == "test" and password == "test"
     ):
         if username == "test":
             user_identity = username
@@ -236,8 +251,8 @@ def get_user_history(**kwargs):
     else:
         history = (
             current_user.get_history()
-            .paginate(int(page_number), int(page_size), False)
-            .items
+                .paginate(int(page_number), int(page_size), False)
+                .items
         )
     return jsonify([h.to_json() for h in history])
 
@@ -263,3 +278,47 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
     jti = jwt_payload["jti"]
     token_in_redis = jwt_redis_blocklist.get(jti)
     return token_in_redis is not None
+
+
+@users_bp.route("/oauth/login/<string:social_name>", methods=["GET"])
+def create_authorisation_url(social_name: str):
+    client = oauth.create_client(social_name)
+    if not client:
+        return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
+    redirect_url = url_for(
+        "users_bp.social_user_authorise", social_name=social_name, _external=True,
+    )
+    return client.authorize_redirect(redirect_url)
+
+
+@users_bp.route('/oauth/callback/<string:social_name>', methods=["GET"])
+def social_user_authorise(social_name: str):
+    client = oauth.create_client(social_name)
+    if not client:
+        return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
+    token = client.authorize_access_token()
+    user_info = oauth.yandex.userinfo()
+    if not user_info:
+        return make_response({'msg': 'Information not provided'}, HTTPStatus.NOT_FOUND)
+    password = ''.join(random.choice(string.printable) for i in range(10))
+    user = User.query.filter(
+        or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
+    if not user:
+        user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
+        db.session.add(user)
+        db.session.commit()
+        social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
+        db.session.add(social_user)
+        db.session.commit()
+    access_token = create_access_token(identity=user.id)
+    refresh_token = create_refresh_token(identity=user.id)
+    useragent = request.user_agent.string
+    history = History(user_id=user.id, useragent=useragent, timestamp=datetime.now()
+    )
+    db.session.add(history)
+    db.session.commit()
+    token = {
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }
+    return make_response(token, 200)

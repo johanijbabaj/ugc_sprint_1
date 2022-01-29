@@ -1,13 +1,15 @@
+import hashlib
 import os
 from datetime import timedelta
 
+from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy, inspect
 
 import redis
 
-
+load_dotenv('auth.env')
 class Config:
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{os.getenv('DB_USERNAME')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
@@ -16,6 +18,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     ACCESS_EXPIRES = timedelta(hours=1)
+    SECRET_KEY = hashlib.md5('super_secret'.encode()).hexdigest()
     SWAGGER_TEMPLATE = {
         "securityDefinitions": {
             "APIKeyHeader": {
@@ -27,6 +30,9 @@ class Config:
         }
     }
     MIGRATIONS_PATH = os.getenv("MIGRATIONS_PATH")
+    YANDEX_ID = os.getenv("YANDEX_ID")
+    YANDEX_PASSWORD = os.getenv('YANDEX_PASSWORD')
+
 
 
 db = SQLAlchemy(session_options={"autoflush": False})
