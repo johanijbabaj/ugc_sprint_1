@@ -39,7 +39,7 @@ class User(db.Model):
     login = db.Column(db.String, unique=True, nullable=False)
     email = db.Column(db.String, unique=True, nullable=False)
     password_hash = db.Column(db.String, nullable=False)
-    full_name = db.Column(db.String, nullable=False)
+    full_name = db.Column(db.String)
     phone = db.Column(db.String)
     avatar_link = db.Column(db.String)
     address = db.Column(db.String)
@@ -203,12 +203,13 @@ class SocialAccount(db.Model):
     __tablename__ = 'social_account'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('auth.user.id'), nullable=False)
     user = db.relationship(User, backref=db.backref('social_accounts', lazy=True))
     social_id = db.Column(db.String, nullable=False)
     social_name = db.Column(db.String, nullable=False)
 
-    __table_args__ = (db.UniqueConstraint('social_id', 'social_name', name='social_pk'),)
+    __table_args__ = (db.UniqueConstraint('social_id', 'social_name', name='social_pk'),
+                      {"schema": "auth", "extend_existing": True})
 
     def __repr__(self):
         return f'<SocialAccount {self.social_name}:{self.user_id}>'
