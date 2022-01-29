@@ -13,6 +13,15 @@ services:
     networks:
       - movies_network
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "6831:6831"
+      - "16686:16686"
+    networks:
+      - movies_network
+      
   django:
     build:
       context: movies_admin
