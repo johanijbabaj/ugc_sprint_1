@@ -11,12 +11,13 @@ import time
 from auth_config import Config, db, engine, insp, jwt, jwt_redis, migrate_obj
 from db_models import Group, User
 from flasgger import Swagger
-from flask import Flask
+from flask import Flask, request, make_response
 from flask_migrate import init, migrate, upgrade
 from groups_bp.groups_bp import groups_bp
 from password_hash import check_password, hash_password
 from test_bp.test_bp import test_bp
 from users_bp.users_bp import users_bp
+from flask_opentracing import FlaskTracer
 
 BASE_PATH = "/v1"
 
@@ -99,12 +100,42 @@ def db_initialize(app):
             logging.error(f"we have a problem: {ex}")
 
 
+config_data = {
+    'sampler': {
+        'type': 'const',
+        'param': 1,
+    },
+    'local_agent': {
+        'reporting_host': 'jaeger',
+        'reporting_port': '6831',
+    },
+    'logging': True,
+}
+
+
+def _setup_jaeger():
+    from jaeger_client import Config
+    config = Config(config=config_data, service_name="movies-api", validate=True, )
+    return config.initialize_tracer()
+
+
+app = Flask(__name__)
+tracer = FlaskTracer(_setup_jaeger, app=app)
+
+
+@app.before_request
+def before_request():
+    request_id = request.headers.get('X-Request-Id')
+    if not request_id:
+        return make_response('X-Request-Id not found', 404)
+
+
 def create_app():
-    app = Flask(__name__)
     app.config.from_object(Config())
     app.register_blueprint(groups_bp, url_prefix=f"{BASE_PATH}/groups")
     app.register_blueprint(users_bp, url_prefix=f"{BASE_PATH}/users")
     app.register_blueprint(test_bp, url_prefix="/test")
+
     swagger = Swagger(app, template=Config.SWAGGER_TEMPLATE)
     db.init_app(app)
     # engine = db.create_engine(Config.SQLALCHEMY_DATABASE_URI, {})
