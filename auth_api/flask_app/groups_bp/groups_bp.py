@@ -10,7 +10,7 @@ from flask.json import jsonify
 groups_bp = Blueprint("groups_bp", __name__)
 
 
-@swag_from("../schemes/groups_get.yaml")
+@swag_from("../schemes/auth_api_swagger.yaml", endpoint='list_groups', methods=["GET"], validation=True)
 @groups_bp.route("/", methods=["GET"])
 def list_groups():
     """
@@ -22,9 +22,9 @@ def list_groups():
     return jsonify(groups)
 
 
+@swag_from("../schemes/auth_api_swagger.yaml", endpoint='create_group', methods=["POST"], validation=True)
 @groups_bp.route("/", methods=["POST"])
 @admin_required()
-@swag_from("../schemes/group_post.yaml")
 def create_group():
     """
     Создать новую группу
@@ -38,6 +38,7 @@ def create_group():
     return jsonify(group.to_json())
 
 
+@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_group', methods=["GET"], validation=True)
 @swag_from("../schemes/group_get.yaml")
 @groups_bp.route("/<group_id>/", methods=["GET"])
 def get_group(group_id):
@@ -50,9 +51,9 @@ def get_group(group_id):
     return jsonify(group.to_json())
 
 
+@swag_from("../schemes/auth_api_swagger.yaml", endpoint='delete_group', methods=["DELETE"], validation=True)
 @groups_bp.route("/<group_id>/", methods=["DELETE"])
 @admin_required()
-@swag_from("../schemes/group_del.yaml")
 def del_group(group_id):
     """
     Удалить группу
@@ -119,7 +120,7 @@ def add_group_user(group_id):
     # FIXME: Через Swagger не работает
     # user_id = request.args["user_id"]
     user_id = request.json["user_id"]
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     group.users.append(user)
@@ -143,7 +144,7 @@ def get_membership(group_id, user_id):
     group = Group.query.get(group_id)
     if group is None:
         return jsonify({"error": "group not found"}), HTTPStatus.NOT_FOUND
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     if user not in group.users:
@@ -158,7 +159,7 @@ def del_membership(group_id, user_id):
     """
     Удалить пользователя из группы
     """
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id, deleted=False).first()
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     group = Group.query.get(group_id)
