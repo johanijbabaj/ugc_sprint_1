@@ -2,13 +2,14 @@ import hashlib
 import os
 from datetime import timedelta
 
+from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy, inspect
 
 import redis
 
-
+load_dotenv('auth.env')
 class Config:
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{os.getenv('DB_USERNAME')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
