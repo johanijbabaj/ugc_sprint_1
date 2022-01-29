@@ -1,19 +1,19 @@
-swagger: "2.0"
-info:
-  description: "Тестовый сервис авторизации"
-  version: "1.0"
-  title: "Auth_API"
-basePath: "/v1"
-tags:
-- name: "user"
-  description: "Операции с пользователями"
-- name: "group"
-  description: "Операции с группами"
-schemes:
-- "https"
-- "http"
-
-
+#swagger: "2.0"
+#info:
+#  description: "Тестовый сервис авторизации"
+#  version: "1.0"
+#  title: "Auth_API"
+#basePath: "/v1"
+#tags:
+#- name: "User"
+#  description: "Операции с пользователями"
+#- name: "Group"
+#  description: "Операции с группами"
+#schemes:
+#- "https"
+#- "http"
+#
+#
 paths:
   /users/:
     get:

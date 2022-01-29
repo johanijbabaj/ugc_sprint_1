@@ -12,8 +12,6 @@ tags:
 schemes:
 - "https"
 - "http"
-
-
 paths:
   /users/:
     get:
