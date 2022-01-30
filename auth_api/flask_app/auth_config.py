@@ -32,8 +32,11 @@ class Config:
         }
     }
     MIGRATIONS_PATH = os.getenv("MIGRATIONS_PATH")
-    YANDEX_ID = os.getenv("YANDEX_ID")
-    YANDEX_PASSWORD = os.getenv('YANDEX_PASSWORD')
+    YANDEX_CLIENT_ID = os.getenv("YANDEX_CLIENT_ID")
+    YANDEX_CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET")
+    YANDEX_AUTHORIZE_URL = os.getenv("YANDEX_AUTHORIZE_URL")
+    YANDEX_ACCESS_TOKEN_URL = os.getenv("YANDEX_ACCESS_TOKEN_URL")
+    YANDEX_API_BASE_URL = os.getenv("YANDEX_API_BASE_URL")
 
 
 db = SQLAlchemy(session_options={"autoflush": False})
