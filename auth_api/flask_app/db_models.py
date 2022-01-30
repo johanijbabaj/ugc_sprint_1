@@ -311,7 +311,7 @@ class SocialAccount(db.Model):
         nullable=False,
     )
     user = db.relationship(User, backref=db.backref("social_accounts", lazy=True))
-    user_deleted = db.Column(db.Boolean)
+    user_deleted = db.Column(db.Boolean, default=False)
     social_id = db.Column(db.String, nullable=False)
     social_name = db.Column(db.String, nullable=False)
 
