@@ -8,13 +8,12 @@ import shutil
 import sys
 import time
 
-from auth_config import Config, db, engine, insp, jwt, jwt_redis, migrate_obj
+from auth_config import Config, db, engine, insp, jwt, migrate_obj
 from db_models import Group, User
 from flasgger import Swagger
 from flask import Flask, request, make_response
 from flask_migrate import init, migrate, upgrade
 from groups_bp.groups_bp import groups_bp
-from password_hash import check_password, hash_password
 from test_bp.test_bp import test_bp
 from users_bp.users_bp import users_bp
 from flask_opentracing import FlaskTracer
@@ -155,6 +154,6 @@ if __name__ == "__main__":
             db.drop_all()
         # Инициалиазции базы. Проверяем наличие таблицы пользователей
         if not insp.has_table("user", schema="auth"):
-            logging.info(f"initializing...")
+            logging.info("initializing...")
             db_initialize(app)
         app.run(host="0.0.0.0")

@@ -1,6 +1,7 @@
 import os
-import requests
 from typing import Optional
+
+import requests
 
 
 def get_user_type(auth_header: Optional[str] = None):
