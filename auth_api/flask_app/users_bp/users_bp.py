@@ -66,8 +66,7 @@ def limit_requests(per_minute: int):
             pipe.incr(key, 1)
             pipe.expire(key, 59)
             result = pipe.execute()
-            print(key)
-            print(result)
+            logger.info(f"key - {key}. result - {result}")
             if result[0] > per_minute:
                 return (
                     jsonify({"error": "too many requests"}),
