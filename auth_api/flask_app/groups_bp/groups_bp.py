@@ -10,7 +10,12 @@ from flask.json import jsonify
 groups_bp = Blueprint("groups_bp", __name__)
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='list_groups', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="list_groups",
+    methods=["GET"],
+    validation=True,
+)
 @groups_bp.route("/", methods=["GET"])
 def list_groups():
     """
@@ -22,7 +27,12 @@ def list_groups():
     return jsonify(groups)
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='create_group', methods=["POST"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="create_group",
+    methods=["POST"],
+    validation=True,
+)
 @groups_bp.route("/", methods=["POST"])
 @admin_required()
 def create_group():
@@ -38,7 +48,12 @@ def create_group():
     return jsonify(group.to_json())
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_group', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_group",
+    methods=["GET"],
+    validation=True,
+)
 @groups_bp.route("/<group_id>/", methods=["GET"])
 def get_group(group_id):
     """
@@ -50,7 +65,12 @@ def get_group(group_id):
     return jsonify(group.to_json())
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='delete_group', methods=["DELETE"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="delete_group",
+    methods=["DELETE"],
+    validation=True,
+)
 @groups_bp.route("/<group_id>/", methods=["DELETE"])
 @admin_required()
 def del_group(group_id):
@@ -65,7 +85,12 @@ def del_group(group_id):
     return jsonify({"result": "Group deleted"})
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='update_group', methods=["PUT"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="update_group",
+    methods=["PUT"],
+    validation=True,
+)
 @admin_required()
 @groups_bp.route("/<group_id>/", methods=["PUT"])
 def update_group(group_id):
@@ -84,7 +109,12 @@ def update_group(group_id):
     return jsonify({})
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_group_users', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_group_users",
+    methods=["GET"],
+    validation=True,
+)
 @groups_bp.route("/<group_id>/users/", methods=["GET"])
 def list_group_users(group_id):
     """
@@ -106,7 +136,12 @@ def list_group_users(group_id):
     return jsonify(answer)
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='add_group_user', methods=["POST"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="add_group_user",
+    methods=["POST"],
+    validation=True,
+)
 @admin_required()
 @swag_from("../schemes/group_user_post.yaml", methods=["POST"])
 def add_group_user(group_id):
@@ -128,7 +163,12 @@ def add_group_user(group_id):
     return jsonify({"result": f"User {user_id} added to group {group_id}"})
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_group_user', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_group_user",
+    methods=["GET"],
+    validation=True,
+)
 @groups_bp.route("/<group_id>/user/<user_id>", methods=["GET"])
 def get_membership(group_id, user_id):
     """
@@ -151,7 +191,12 @@ def get_membership(group_id, user_id):
     return jsonify({"user_id": user_id, "group_id": group_id})
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='delete_group_user', methods=["DELETE"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="delete_group_user",
+    methods=["DELETE"],
+    validation=True,
+)
 @groups_bp.route("/<group_id>/user/<user_id>", methods=["DELETE"])
 @admin_required()
 def del_membership(group_id, user_id):

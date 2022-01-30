@@ -180,8 +180,8 @@ class User(UserMixin, db.Model):
         if since:
             return (
                 History.query.filter(History.user_id == self.id)
-                    .filter(History.timestamp >= since)
-                    .order_by(History.timestamp.desc())
+                .filter(History.timestamp >= since)
+                .order_by(History.timestamp.desc())
             )
         else:
             return History.query.filter(History.user_id == self.id).order_by(
@@ -226,28 +226,32 @@ def create_user_active_after_create(**kw):
 #     DDL("""ALTER TABLE auth.user ATTACH PARTITION auth.user_active
 #         FOR VALUES in (False);""")
 #     )
-
-
-class History(db.Model):
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["user_id", "user_deleted"], ["auth.user.id", "auth.user.deleted"]
-        ),
-        {"schema": "auth", "extend_existing": True},
-    )
-    __tablename__ = "history"
-
+class HistoryMixin:
     id = db.Column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
-        unique=True,
         nullable=False,
     )
     user_id = db.Column(UUID(as_uuid=True))
     user_deleted = db.Column(db.Boolean)
     useragent = db.Column(db.String, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, primary_key=True)
+
+
+class History(HistoryMixin, db.Model):
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "user_deleted"], ["auth.user.id", "auth.user.deleted"]
+        ),
+        UniqueConstraint("id", "timestamp"),
+        {
+            "schema": "auth",
+            "extend_existing": True,
+            "postgresql_partition_by": "RANGE (timestamp)",
+        },
+    )
+    __tablename__ = "history"
 
     def __repr__(self):
         return f"<History {self.useragent}>"
@@ -261,26 +265,72 @@ class History(db.Model):
         }
 
 
-class SocialAccount(db.Model):
-    __tablename__ = 'social_account'
+class History2022(HistoryMixin, db.Model):
+    __tablename__ = "history_2022"
+    __table_args__ = {"schema": "auth", "extend_existing": True}
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('auth.user.id'), nullable=False)
-    user = db.relationship(User, backref=db.backref('social_accounts', lazy=True))
+
+class History2023(HistoryMixin, db.Model):
+    __tablename__ = "history_2023"
+    __table_args__ = {"schema": "auth", "extend_existing": True}
+
+
+History2022.__table__.add_is_dependent_on(History.__table__)
+History2023.__table__.add_is_dependent_on(History.__table__)
+
+
+@event.listens_for(History2022.__table__, "after_create")
+def create_history2022_after_create(**kw):
+    DDL(
+        """ALTER TABLE auth.history ATTACH PARTITION auth.history_2022
+        FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');"""
+    )
+
+
+@event.listens_for(History2023.__table__, "after_create")
+def create_history2023_after_create(**kw):
+    DDL(
+        """ALTER TABLE auth.history ATTACH PARTITION auth.history_2023
+        FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');"""
+    )
+
+
+class SocialAccount(db.Model):
+    __tablename__ = "social_account"
+
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    user_id = db.Column(
+        UUID(as_uuid=True),
+        # db.ForeignKey("auth.user.id"),
+        nullable=False,
+    )
+    user = db.relationship(User, backref=db.backref("social_accounts", lazy=True))
+    user_deleted = db.Column(db.Boolean, default=False)
     social_id = db.Column(db.String, nullable=False)
     social_name = db.Column(db.String, nullable=False)
 
-    __table_args__ = (db.UniqueConstraint('social_id', 'social_name', name='social_pk'),
-                      {"schema": "auth", "extend_existing": True})
+    __table_args__ = (
+        db.UniqueConstraint("social_id", "social_name", name="social_pk"),
+        ForeignKeyConstraint(
+            ["user_id", "user_deleted"], ["auth.user.id", "auth.user.deleted"]
+        ),
+        {"schema": "auth", "extend_existing": True},
+    )
 
     def __repr__(self):
-        return f'<SocialAccount {self.social_name}:{self.user_id}>'
+        return f"<SocialAccount {self.social_name}:{self.user_id}>"
 
     def to_json(self):
         return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'user': self.user.name,
-            'social_id': self.social_id,
-            'social_name': self.social_name
+            "id": self.id,
+            "user_id": self.user_id,
+            "user": self.user.name,
+            "social_id": self.social_id,
+            "social_name": self.social_name,
         }
