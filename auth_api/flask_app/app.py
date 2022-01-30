@@ -58,6 +58,15 @@ def db_initialize(app):
                 """ALTER TABLE auth.user ATTACH PARTITION auth.user_deleted
                 FOR VALUES IN (True);"""
             )
+            engine.execute(
+                """ALTER TABLE auth.history ATTACH PARTITION auth.history_2022
+                FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');"""
+            )
+            engine.execute(
+                """ALTER TABLE auth.history ATTACH PARTITION auth.history_2023
+                FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');"""
+            )
+
             db.session.commit()
             # db.create_all()
             admin_group = Group(name="admin", description="Administrators")
