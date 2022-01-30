@@ -11,12 +11,12 @@ import time
 from auth_config import Config, db, engine, insp, jwt, migrate_obj
 from db_models import Group, User
 from flasgger import Swagger
-from flask import Flask, request, make_response
+from flask import Flask, make_response, request
 from flask_migrate import init, migrate, upgrade
+from flask_opentracing import FlaskTracer
 from groups_bp.groups_bp import groups_bp
 from test_bp.test_bp import test_bp
 from users_bp.users_bp import users_bp
-from flask_opentracing import FlaskTracer
 
 BASE_PATH = "/v1"
 
@@ -100,21 +100,26 @@ def db_initialize(app):
 
 
 config_data = {
-    'sampler': {
-        'type': 'const',
-        'param': 1,
+    "sampler": {
+        "type": "const",
+        "param": 1,
     },
-    'local_agent': {
-        'reporting_host': 'jaeger',
-        'reporting_port': '6831',
+    "local_agent": {
+        "reporting_host": "jaeger",
+        "reporting_port": "6831",
     },
-    'logging': True,
+    "logging": True,
 }
 
 
 def _setup_jaeger():
     from jaeger_client import Config
-    config = Config(config=config_data, service_name="movies-api", validate=True, )
+
+    config = Config(
+        config=config_data,
+        service_name="movies-api",
+        validate=True,
+    )
     return config.initialize_tracer()
 
 
@@ -124,9 +129,9 @@ tracer = FlaskTracer(_setup_jaeger, app=app)
 
 @app.before_request
 def before_request():
-    request_id = request.headers.get('X-Request-Id')
+    request_id = request.headers.get("X-Request-Id")
     if not request_id:
-        return make_response('X-Request-Id not found', 404)
+        return make_response("X-Request-Id not found", 404)
 
 
 def create_app():

@@ -1,37 +1,46 @@
+import logging
+import os
+import random
+import string
 from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
-import logging
-import random
-import string
-import os
 
 import opentracing
-from sqlalchemy import or_
-
 from auth_config import Config, db, jwt, jwt_redis
-from db_models import History, User, SocialAccount
+from authlib.integrations.flask_client import OAuth
+from db_models import History, SocialAccount, User
 from flasgger.utils import swag_from
-from flask import Blueprint, request
+from flask import Blueprint
+from flask import current_app as app
+from flask import make_response, request, url_for
 from flask.json import jsonify
-from flask_jwt_extended import (create_access_token, create_refresh_token,
-                                get_jwt, get_jwt_identity, jwt_required,
-                                verify_jwt_in_request)
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    get_jwt,
+    get_jwt_identity,
+    jwt_required,
+    verify_jwt_in_request,
+)
+from sqlalchemy import or_
 
 import redis
 
-from authlib.integrations.flask_client import OAuth
-from flask import current_app as app, url_for, Blueprint, make_response, request
-
-
 access_data = {
-    'grant_type': 'authorization_code',
+    "grant_type": "authorization_code",
 }
 
 oauth = OAuth(app)
-oauth.register('yandex', client_id=Config.YANDEX_ID, client_secret=Config.YANDEX_PASSWORD,
-               authorize_url='https://oauth.yandex.ru/authorize', access_token_url='https://oauth.yandex.ru/token',
-               access_token_params=access_data, userinfo_endpoint='https://login.yandex.ru/info', )
+oauth.register(
+    "yandex",
+    client_id=Config.YANDEX_ID,
+    client_secret=Config.YANDEX_PASSWORD,
+    authorize_url="https://oauth.yandex.ru/authorize",
+    access_token_url="https://oauth.yandex.ru/token",
+    access_token_params=access_data,
+    userinfo_endpoint="https://login.yandex.ru/info",
+)
 
 jwt_redis_blocklist = jwt_redis
 users_bp = Blueprint("users_bp", __name__)
@@ -41,13 +50,14 @@ logger = logging.getLogger(__name__)
 
 
 def limit_requests(per_minute: int):
-    redis_host = os.getenv('REDIS_AUTH_HOST', 'redis_auth')
-    redis_port = os.getenv('REDIS_AUTH_PORT', 6479)
-    redis_password = os.getenv('REDIS_AUTH_PASSWORD', 'superpassword')
-    redis_conn =  redis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
+    redis_host = os.getenv("REDIS_AUTH_HOST", "redis_auth")
+    redis_port = int(os.getenv("REDIS_AUTH_PORT", 6479))
+    redis_password = os.getenv("REDIS_AUTH_PASSWORD", "superpassword")
+    redis_conn = redis.Redis(
+        host=redis_host, port=redis_port, db=0, password=redis_password
+    )
 
     def wrapper(func):
-
         @wraps(func)
         def wrapped(*args, **kwargs):
             pipe = redis_conn.pipeline()
@@ -59,7 +69,10 @@ def limit_requests(per_minute: int):
             print(key)
             print(result)
             if result[0] > per_minute:
-                return jsonify({'error': 'too many requests'}), HTTPStatus.TOO_MANY_REQUESTS
+                return (
+                    jsonify({"error": "too many requests"}),
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                )
             return func(*args, **kwargs)
 
         return wrapped
@@ -67,7 +80,12 @@ def limit_requests(per_minute: int):
     return wrapper
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='list_users', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="list_users",
+    methods=["GET"],
+    validation=True,
+)
 @users_bp.route("/", methods=["GET"])
 @limit_requests(per_minute=10)
 def list_users(**kwargs):
@@ -82,15 +100,20 @@ def list_users(**kwargs):
             users.append(user.to_json())
     else:
         for user in (
-                User.query.order_by(User.login)
-                        .paginate(int(page_number), int(page_size), False)
-                        .items
+            User.query.order_by(User.login)
+            .paginate(int(page_number), int(page_size), False)
+            .items
         ):
             users.append(user.to_json())
     return jsonify(users), HTTPStatus.OK
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='register', methods=['POST'], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="register",
+    methods=["POST"],
+    validation=True,
+)
 @users_bp.route("/register", methods=["POST"])
 @limit_requests(per_minute=10)
 def register():
@@ -136,7 +159,7 @@ def login():
     password = request.args.get("password", None)
     user = User.query.filter_by(login=username).first()
     if (user and user.verify_password(password)) or (
-            username == "test" and password == "test"
+        username == "test" and password == "test"
     ):
         if username == "test":
             user_identity = username
@@ -214,7 +237,7 @@ def update():
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     obj = request.json
-    #obj["password"] = hash_password(obj["password"])
+    # obj["password"] = hash_password(obj["password"])
     updated_user = user.from_json(obj)
     return (
         jsonify(msg=f"Update success: {updated_user}"),
@@ -222,7 +245,12 @@ def update():
     )
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_user', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_user",
+    methods=["GET"],
+    validation=True,
+)
 @users_bp.route("/<user_id>/", methods=["GET"])
 def get_user(user_id):
     """
@@ -234,7 +262,12 @@ def get_user(user_id):
     return jsonify(user.to_json())
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_user_history', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_user_history",
+    methods=["GET"],
+    validation=True,
+)
 @users_bp.route("/history", methods=["GET"])
 @jwt_required()
 def get_user_history(**kwargs):
@@ -252,13 +285,18 @@ def get_user_history(**kwargs):
     else:
         history = (
             current_user.get_history()
-                .paginate(int(page_number), int(page_size), False)
-                .items
+            .paginate(int(page_number), int(page_size), False)
+            .items
         )
     return jsonify([h.to_json() for h in history])
 
 
-@swag_from("../schemes/auth_api_swagger.yaml", endpoint='get_user_groups', methods=["GET"], validation=True)
+@swag_from(
+    "../schemes/auth_api_swagger.yaml",
+    endpoint="get_user_groups",
+    methods=["GET"],
+    validation=True,
+)
 @users_bp.route("/groups", methods=["GET"])
 @jwt_required()
 def get_user_groups(**kwargs):
@@ -285,46 +323,63 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
 def create_authorisation_url(social_name: str):
     client = oauth.create_client(social_name)
     if not client:
-        return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
+        return make_response({"msg": f"{client} not found"}, HTTPStatus.NOT_FOUND)
     redirect_url = url_for(
-        "users_bp.social_user_authorise", social_name=social_name, _external=True,
+        "users_bp.social_user_authorise",
+        social_name=social_name,
+        _external=True,
     )
     return client.authorize_redirect(redirect_url)
 
 
-@users_bp.route('/oauth/callback/<string:social_name>', methods=["GET"])
+@users_bp.route("/oauth/callback/<string:social_name>", methods=["GET"])
 def social_user_authorise(social_name: str):
     from app import tracer
+
     parent_span = tracer.get_span()
     client = oauth.create_client(social_name)
     if not client:
-        return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
+        return make_response({"msg": f"{client} not found"}, HTTPStatus.NOT_FOUND)
     token = client.authorize_access_token()
     user_info = oauth.yandex.userinfo()
     if not user_info:
-        return make_response({'msg': 'Information not provided'}, HTTPStatus.NOT_FOUND)
-    password = ''.join(random.choice(string.printable) for i in range(10))
-    with opentracing.tracer.start_span('Get User record db save', child_of=parent_span) as span:
+        return make_response({"msg": "Information not provided"}, HTTPStatus.NOT_FOUND)
+    password = "".join(random.choice(string.printable) for i in range(10))
+    with opentracing.tracer.start_span(
+        "Get User record db save", child_of=parent_span
+    ) as span:
         user = User.query.filter(
-            or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
+            or_(
+                User.login == user_info["login"],
+                User.email == user_info["default_email"],
+            )
+        ).first()
     if not user:
-        with opentracing.tracer.start_span('User record db save', child_of=parent_span) as span:
-            user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
+        with opentracing.tracer.start_span(
+            "User record db save", child_of=parent_span
+        ) as span:
+            user = User(
+                email=user_info["default_email"],
+                login=user_info["login"],
+                password=password,
+            )
             db.session.add(user)
             db.session.commit()
-            social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
+            social_user = SocialAccount(
+                social_id=user_info["id"], social_name=social_name, user_id=user.id
+            )
             db.session.add(social_user)
             db.session.commit()
     access_token = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)
     useragent = request.user_agent.string
-    with opentracing.tracer.start_span('history record db save', child_of=parent_span) as span:
-        history = History(user_id=user.id, useragent=useragent, timestamp=datetime.now()
-                          )
+    with opentracing.tracer.start_span(
+        "history record db save", child_of=parent_span
+    ) as span:
+        history = History(
+            user_id=user.id, useragent=useragent, timestamp=datetime.now()
+        )
         db.session.add(history)
         db.session.commit()
-    token = {
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }
+    token = {"access_token": access_token, "refresh_token": refresh_token}
     return make_response(token, 200)

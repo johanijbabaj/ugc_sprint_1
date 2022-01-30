@@ -180,8 +180,8 @@ class User(UserMixin, db.Model):
         if since:
             return (
                 History.query.filter(History.user_id == self.id)
-                    .filter(History.timestamp >= since)
-                    .order_by(History.timestamp.desc())
+                .filter(History.timestamp >= since)
+                .order_by(History.timestamp.desc())
             )
         else:
             return History.query.filter(History.user_id == self.id).order_by(
@@ -262,25 +262,35 @@ class History(db.Model):
 
 
 class SocialAccount(db.Model):
-    __tablename__ = 'social_account'
+    __tablename__ = "social_account"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('auth.user.id'), nullable=False)
-    user = db.relationship(User, backref=db.backref('social_accounts', lazy=True))
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    user_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("auth.user.id"), nullable=False
+    )
+    user = db.relationship(User, backref=db.backref("social_accounts", lazy=True))
     social_id = db.Column(db.String, nullable=False)
     social_name = db.Column(db.String, nullable=False)
 
-    __table_args__ = (db.UniqueConstraint('social_id', 'social_name', name='social_pk'),
-                      {"schema": "auth", "extend_existing": True})
+    __table_args__ = (
+        db.UniqueConstraint("social_id", "social_name", name="social_pk"),
+        {"schema": "auth", "extend_existing": True},
+    )
 
     def __repr__(self):
-        return f'<SocialAccount {self.social_name}:{self.user_id}>'
+        return f"<SocialAccount {self.social_name}:{self.user_id}>"
 
     def to_json(self):
         return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'user': self.user.name,
-            'social_id': self.social_id,
-            'social_name': self.social_name
+            "id": self.id,
+            "user_id": self.user_id,
+            "user": self.user.name,
+            "social_id": self.social_id,
+            "social_name": self.social_name,
         }
