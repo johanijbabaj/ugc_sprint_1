@@ -10,6 +10,8 @@
 /flask_app/db_models.py
 
 # Информация для ревьювера
+Ссылка на репозиторий
+https://github.com/johanijbabaj/Auth_sprint_2.git
 
 ## Запуск основного docker-compose с сервисами авториазции:
 
