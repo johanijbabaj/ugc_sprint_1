@@ -28,15 +28,7 @@ from password_hash import check_password, hash_password
 from authlib.integrations.flask_client import OAuth
 from flask import current_app as app, url_for, Blueprint, make_response, request
 
-
-access_data = {
-    'grant_type': 'authorization_code',
-}
-
 oauth = OAuth(app)
-oauth.register('yandex', client_id=Config.YANDEX_ID, client_secret=Config.YANDEX_PASSWORD,
-               authorize_url='https://oauth.yandex.ru/authorize', access_token_url='https://oauth.yandex.ru/token',
-               access_token_params=access_data, userinfo_endpoint='https://login.yandex.ru/info', )
 
 jwt_redis_blocklist = jwt_redis
 users_bp = Blueprint("users_bp", __name__)
@@ -49,10 +41,9 @@ def limit_requests(per_minute: int):
     redis_host = os.getenv('REDIS_AUTH_HOST', 'redis_auth')
     redis_port = os.getenv('REDIS_AUTH_PORT', 6479)
     redis_password = os.getenv('REDIS_AUTH_PASSWORD', 'superpassword')
-    redis_conn =  redis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
+    redis_conn = redis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
 
     def wrapper(func):
-
         @wraps(func)
         def wrapped(*args, **kwargs):
             pipe = redis_conn.pipeline()
@@ -288,6 +279,7 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
 
 @users_bp.route("/oauth/login/<string:social_name>", methods=["GET"])
 def create_authorisation_url(social_name: str):
+    oauth.register(social_name, )
     client = oauth.create_client(social_name)
     if not client:
         return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
@@ -305,7 +297,8 @@ def social_user_authorise(social_name: str):
     if not client:
         return make_response({'msg': f'{client} not found'}, HTTPStatus.NOT_FOUND)
     token = client.authorize_access_token()
-    user_info = oauth.yandex.userinfo()
+    user_info_url = oauth._clients[social_name].api_base_url
+    user_info = oauth._clients[social_name].get(user_info_url).json()
     if not user_info:
         return make_response({'msg': 'Information not provided'}, HTTPStatus.NOT_FOUND)
     password = ''.join(random.choice(string.printable) for i in range(10))
@@ -314,7 +307,7 @@ def social_user_authorise(social_name: str):
             or_(User.login == user_info['login'], User.email == user_info['default_email'])).first()
     if not user:
         with opentracing.tracer.start_span('User record db save', child_of=parent_span) as span:
-            user = User(email=user_info['default_email'], login=user_info['login'], password=password, )
+            user = User(email=user_info['default_email'], login=user_info['login'], password_hash=password)
             db.session.add(user)
             db.session.commit()
             social_user = SocialAccount(social_id=user_info['id'], social_name=social_name, user_id=user.id)
