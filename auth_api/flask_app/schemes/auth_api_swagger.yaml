@@ -161,6 +161,8 @@ paths:
         "400":
           description: "Invalid username/password supplied"
 
+  /users/logout:
+
   /groups/:
     get:
       tags:
@@ -256,6 +258,7 @@ paths:
       - Group
       summary: "Обновить данные группы"
       description: ""
+      operationId: "update_group"
       produces:
       - "application/json"
       security:
@@ -288,6 +291,7 @@ paths:
       - Group
       summary: "Получить список пользователей группы"
       description: ""
+      operationId: "get_group_users"
       produces:
       - "application/json"
       parameters:
@@ -316,6 +320,7 @@ paths:
       - Group
       summary: "Добавить пользователя в группу"
       description: ""
+      operationId: "add_group_user"
       produces:
       - "application/json"
       security:
@@ -348,6 +353,7 @@ paths:
       - Group
       summary: "Проверить принадлежность пользователя группе"
       description: ""
+      operationId: "get_group_user"
       produces:
       - "application/json"
       parameters:
@@ -374,6 +380,7 @@ paths:
       - Group
       summary: "Удалить пользователя из группы"
       description: ""
+      operationId: "delete_group_user"
       produces:
       - "application/json"
       security:

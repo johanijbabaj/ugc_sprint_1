@@ -1,9 +1,9 @@
-import logging
-import random
-import string
 from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
+import logging
+import random
+import string
 import os
 
 import opentracing
@@ -12,18 +12,13 @@ from sqlalchemy import or_
 from auth_config import Config, db, jwt, jwt_redis
 from db_models import History, User, SocialAccount
 from flasgger.utils import swag_from
+from flask import Blueprint, request
 from flask.json import jsonify
-from flask_jwt_extended import (
-    create_access_token,
-    create_refresh_token,
-    get_jwt,
-    get_jwt_identity,
-    jwt_required,
-    verify_jwt_in_request,
-)
-import redis
+from flask_jwt_extended import (create_access_token, create_refresh_token,
+                                get_jwt, get_jwt_identity, jwt_required,
+                                verify_jwt_in_request)
 
-from password_hash import check_password, hash_password
+import redis
 
 from authlib.integrations.flask_client import OAuth
 from flask import current_app as app, url_for, Blueprint, make_response, request
@@ -219,7 +214,7 @@ def update():
     if user is None:
         return jsonify({"error": "user not found"}), HTTPStatus.NOT_FOUND
     obj = request.json
-    obj["password"] = hash_password(obj["password"])
+    #obj["password"] = hash_password(obj["password"])
     updated_user = user.from_json(obj)
     return (
         jsonify(msg=f"Update success: {updated_user}"),
