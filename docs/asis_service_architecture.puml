@@ -1,0 +1,38 @@
+@startuml
+'https://plantuml.com/component-diagram
+
+"Client"
+
+node "nginx_movies" {
+  [NGINX]
+                    }
+
+package Auth_API {
+  [Flask_auth_api]
+  [Postgres_Auth]
+
+[Flask_auth_api] -r-> [Redis_auth]
+[Flask_auth_api] -r-> [Postgres_Auth]
+}
+
+
+package ETL {
+component "postgres_movies" {
+database "postgres_movies" {
+}
+[ETL_service]
+}
+
+package Async_API {
+    [Fast_API]
+    frame "Storage" {
+        [Elasticsearch]
+        [Redis]
+                    }
+                  }
+[Client] -[hidden]-> Auth_API
+[Client] --> [NGINX]
+ETL <-[hidden]- Auth_API
+[NGINX] --> [Flask_auth_api]
+
+@enduml
