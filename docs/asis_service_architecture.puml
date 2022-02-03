@@ -1,0 +1,49 @@
+@startuml
+"Client"
+
+package "web-server" {
+    [NGINX]
+}
+'Сервис аутентификации и авторизации'
+package Auth_API {
+    [Flask_auth_api]
+    database Postgres_Auth
+    '----------локальный комментарий
+    note right of [Redis_auth]: Отозванные refresh токены
+}
+package ETL {
+    [ETL_service]
+}
+package Async_FastAPI {
+    [Fast_API]
+    database "ElasticSearch"
+    database "Redis"
+}
+package Django {
+    [Movies_admin]
+    database Postgres
+}
+package "Tracing and monitoring" {
+    [Jaeger]
+}
+'------------Связи ---------------
+[Client] -[hidden]-> Auth_API
+[Client] --> [NGINX]
+[NGINX] --> [Flask_auth_api]
+[NGINX] --> [Fast_API]
+[ETL_service] --> ElasticSearch
+[ETL_service] <-- Postgres
+[Fast_API] <--> Redis: cashe
+[Fast_API] <-- ElasticSearch
+Postgres <--> [Movies_admin]
+[Flask_auth_api] <-r-> [Redis_auth]
+[Flask_auth_api] -r-> Postgres_Auth
+[Jaeger] --> [Fast_API]
+'--------- Комментарии ----------
+note right of [NGINX]
+    Прокси веб сервер
+end note
+note left of [Client]: Клиентские запросы
+'--------- Раскраска ------------
+skinparam DatabaseBackgroundColor Aqua
+@enduml
