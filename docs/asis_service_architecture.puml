@@ -4,11 +4,10 @@
 package "web-server" {
     [NGINX]
 }
-'Сервис аутентификации и авторизации'
 package Auth_API {
     [Flask_auth_api]
     database Postgres_Auth
-    '----------локальный комментарий
+    '----------локальные комментарий
     note right of [Redis_auth]: Отозванные refresh токены
 }
 package ETL {
