@@ -8,6 +8,8 @@
 /schema/db_schema.sql
 - ORM модели:
 /flask_app/db_models.py
+- Описание схемы сервисов AS_IS на начала 8 спринта
+[here](/docs/asis_service_architecture.puml)
 
 # Информация для ревьювера
 Ссылка на репозиторий
