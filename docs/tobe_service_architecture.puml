@@ -1,5 +1,6 @@
 @startuml
 "Client"
+"Analyst"
 
 package "web-server" {
     [NGINX]
@@ -7,8 +8,10 @@ package "web-server" {
 package Auth_API {
     [Flask_auth_api]
     database Postgres_Auth
+    database [Redis_auth]
     '----------локальные комментарий
-    note right of [Redis_auth]: Отозванные refresh токены
+    'note right of [Redis_auth]
+    ': Отозванные refresh токены
 }
 package ETL {
     [ETL_service]
@@ -19,12 +22,31 @@ package Async_FastAPI {
     database "Redis"
 }
 package Django {
- t   [Movies_admin]
+    [Movies_admin]
     database Postgres
 }
 package "Tracing and monitoring" {
     [Jaeger]
 }
+
+package "event_api" {
+    [Fast_event_api]
+    database Redis_event
+}
+
+package "event_broker" {
+    [Kafka]
+}
+
+package "event_ETL" {
+    [Event_ETL]
+}
+
+
+package "event_storage" {
+    database Some_Event_Storage
+}
+
 '------------Связи ---------------
 [Client] -[hidden]-> Auth_API
 [Client] --> [NGINX]
@@ -38,11 +60,21 @@ Postgres <--> [Movies_admin]
 [Flask_auth_api] <-r-> [Redis_auth]
 [Flask_auth_api] -r-> Postgres_Auth
 [Jaeger] --> [Fast_API]
+
+[Kafka] --> [Event_ETL]
+[Event_ETL] --> Some_Event_Storage
+Some_Event_Storage <-- [Analyst]
+
+[Fast_event_api] -->[Flask_auth_api]
+[Fast_event_api] --> [Kafka]
+[Fast_event_api] <--> [Redis_event]
+Client ..> [Fast_event_api]: опосредованный \n вызов \n событийного API
+
 '--------- Комментарии ----------
 'note right of [NGINX]
 '    Прокси веб сервер
 'end note
-note left of [Client]: Клиентские запросы
+'note left of [Client]: Клиентские запросы
 '--------- Раскраска ------------
 skinparam DatabaseBackgroundColor Aqua
 @enduml
