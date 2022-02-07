@@ -38,13 +38,9 @@ package "event_broker" {
     [Kafka]
 }
 
-package "event_ETL" {
-    [Event_ETL]
-}
-
 
 package "event_storage" {
-    database Some_Event_Storage
+    database Clickhouse
 }
 
 '------------Связи ---------------
@@ -61,9 +57,8 @@ Postgres <--> [Movies_admin]
 [Flask_auth_api] -r-> Postgres_Auth
 [Jaeger] --> [Fast_API]
 
-[Kafka] --> [Event_ETL]
-[Event_ETL] --> Some_Event_Storage
-Some_Event_Storage <-- [Analyst]
+[Kafka] --> Clickhouse
+Clickhouse <-- [Analyst]
 
 [Fast_event_api] -->[Flask_auth_api]
 [Fast_event_api] --> [Kafka]
