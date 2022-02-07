@@ -1,5 +1,5 @@
-import datetime
 from abc import ABC
+from datetime import datetime
 from uuid import UUID
 
 from models._base import OrjsonModel
@@ -9,7 +9,7 @@ class FilmActions(ABC, OrjsonModel):
     film_id: UUID
     user_id: UUID
     _topic: str
-    _created_at: datetime.datetime = datetime.datetime.utcnow()
+    _created_at: datetime = datetime.utcnow()
 
 
 class FilmBookmark(FilmActions):
