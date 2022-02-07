@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from aioredis import Redis
 from fastapi import Depends
+
+from redis import Redis
 
 redis: Optional[Redis] = None
 
 
-async def get_redis() -> Redis:
+def get_redis() -> Optional[Redis]:
     return redis
 
 
@@ -24,17 +25,17 @@ class MemoryCache(ABC):
 class RedisCache(MemoryCache):
     __con = None
 
-    def __init__(self, redis_instance: Depends(get_redis)):
+    def __init__(self, redis_instance: Depends[get_redis]):
         self.__con = redis_instance
 
-    async def set(self, key, data, expire):
-        await self.__con.set(key, data, expire=expire)
+    def set(self, key, data, expire):
+        self.__con.set(key, data, expire=expire)
 
-    async def get(self, key):
-        data = await self.__con.get(key)
+    def get(self, key):
+        data = self.__con.get(key)
         return data
 
 
-async def get_cache() -> MemoryCache:
-    redis_instance = await get_redis()
+def get_cache() -> MemoryCache:
+    redis_instance = get_redis()
     return RedisCache(redis_instance)

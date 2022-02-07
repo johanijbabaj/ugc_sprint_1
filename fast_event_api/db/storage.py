@@ -1,78 +1,33 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from elasticsearch import AsyncElasticsearch
 from fastapi import Depends
+from kafka import KafkaProducer
 
-es: Optional[AsyncElasticsearch] = None
+kafka_producer: Optional[KafkaProducer] = None
 
 
-async def get_elastic() -> AsyncElasticsearch:
-    return es
+def get_kafka() -> KafkaProducer:
+    return kafka_producer
 
 
 class AbstractStorage(ABC):
-
     @abstractmethod
-    def get(self, some_index, some_id, es_fields):
-        pass
-
-    @abstractmethod
-    def search(self, some_index, some_body, es_fields):
-        pass
-
-    @abstractmethod
-    def make_search_query(self, some_index, filter_path, filter_col, filter_param,
-                          sort_column, sort_order,
-                          page_size, page_number, query, query_col):
+    def send(self, topic, key, value):
         pass
 
 
-class ElasticStorage(AbstractStorage):
-    __conn: AsyncElasticsearch
+class KafkaStorage(AbstractStorage):
+    __conn: KafkaProducer
 
-    def __init__(self, elastic: Depends(get_elastic)):
-        self.__conn = elastic
+    def __init__(self, kafka_conn: Depends[get_kafka]):
+        self.__conn = kafka_conn
 
-    async def get(self, some_index, some_id, _source_includes):
-        data = await self.__conn.get(index=some_index, id=some_id, _source_includes=_source_includes)
+    def send(self, some_topic, some_key, some_value):
+        data = self.__conn.send(topic=some_topic, key=some_key, value=some_value)
         return data
 
-    async def search(self, some_index, some_body, es_fields):
-        data = await self.__conn.search(index=some_index, body=some_body, _source_includes=es_fields)
-        return data
 
-    async def make_search_query(self, some_index, filter_path, filter_col,
-                                filter_param, sort_column, sort_order,
-                                page_size, page_number, query, query_col):
-
-        if query or filter_param:
-            match_filter = []
-            if query:
-                match_filter.append({"match": {f"{query_col}": str(query)}})
-            if filter_param:
-                match_filter.append({"match": {f"{filter_path}.{filter_col}": str(filter_param)}})
-            sub_query = {
-                        "bool": {
-                            "must": match_filter
-                        }}
-        else:
-            sub_query = {"match_all": {}}
-
-        if sort_order:
-            sorting = {"sort": [{
-                sort_column: {"order": sort_order}
-            }]}
-        else:
-            sorting = {}
-        main_query = dict(({
-            "from": (page_number - 1) * page_size,
-            "size": page_size,
-            "query": sub_query}), **sorting)
-        main_query = str(main_query).replace("'", '"')
-        return main_query
-
-
-async def get_storage() -> AbstractStorage:
-    es_conn = await get_elastic()
-    return ElasticStorage(es_conn)
+def get_storage() -> AbstractStorage:
+    kafka_producer = get_kafka()
+    return KafkaStorage(kafka_producer)

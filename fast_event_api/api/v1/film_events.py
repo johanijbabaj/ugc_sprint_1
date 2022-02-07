@@ -4,12 +4,10 @@
 
 import logging
 from http import HTTPStatus
-from typing import List, Literal, Optional
-from uuid import UUID
 
 from core.config import ErrorMessage
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from models.film_events import FilmBookmark, FilmRating, FilmProgress
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, responses
+from models.film_events import FilmBookmark, FilmProgress, FilmRating
 from services.film_events import FilmEventsService, get_film_events_service
 from utils import get_user_type
 
@@ -18,31 +16,30 @@ router = APIRouter()
 
 
 @router.post("/bookmarks")
-async def film_search(
-    query: str = Query(None, alias="query_string"),
-    page_size: int = Query(10, alias="page[size]"),
-    page_number: int = Query(1, alias="page[number]"),
-    film_service: FilmEventsService = Depends(get_film_service),
-) -> List[FilmBriefApi]:
+def bookmark_add(
+    bookmark: FilmBookmark,
+    film_events_service: FilmEventsService = Depends(get_film_events_service),
+):
     """
     Примеры обращений, которые должны обрабатываться API
-    #GET /api/v1/film/search?query=star&page[size]=50&page[number]=1
+    #GET /api/v1/bookmarks/
     """
-    logging.debug(
-        f"Получили параметры {query=}-{type(query)},"
-        f" {page_size=}-{type(page_size)}, {page_number=}-{type(page_number)}"
-    )
-    films = await film_service.search(query, page_size, page_number)
-    if not films:
+    # logging.debug(
+    #     f"Получили параметры {query=}-{type(query)},"
+    #     f" {page_size=}-{type(page_size)}, {page_number=}-{type(page_number)}"
+    # )
+    send_bookmark = get_film_events_service.post(bookmark)
+    if not send_bookmark:
         # Если выборка пустая, отдаём 404 статус
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail=ErrorMessage.FILM_NOT_FOUND
         )
     # Перекладываем данные из models.Film в Film
-    return [
-        FilmBriefApi(uuid=film.id, title=film.title, imdb_rating=film.imdb_rating)
-        for film in films
-    ]
+    return HTTPStatus.OK
+    #     [
+    #     FilmBriefApi(uuid=film.id, title=film.title, imdb_rating=film.imdb_rating)
+    #     for film in films
+    # ]
 
 
 # @router.get("/{film_id}", response_model=FilmApi)
