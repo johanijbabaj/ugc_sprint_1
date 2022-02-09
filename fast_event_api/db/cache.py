@@ -25,7 +25,7 @@ class MemoryCache(ABC):
 class RedisCache(MemoryCache):
     __con = None
 
-    def __init__(self, redis_instance: Depends[get_redis]):
+    def __init__(self, redis_instance: Depends(get_redis)):
         self.__con = redis_instance
 
     def set(self, key, data, expire):

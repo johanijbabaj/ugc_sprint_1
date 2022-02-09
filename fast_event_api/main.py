@@ -12,6 +12,7 @@ from kafka import KafkaProducer
 import redis
 from redis import Redis
 
+logger = logging.getLogger(__name__)
 app = FastAPI(
     title=config.PROJECT_NAME,
     docs_url="/api/openapi",
@@ -25,8 +26,9 @@ def startup():
     cache.redis = Redis(
         (config.REDIS_HOST, config.REDIS_PORT), password=config.REDIS_AUTH
     )
+    logger.info(f"Kafka connection broker : {config.KAFKA_HOST}:{config.KAFKA_PORT}")
     storage.kafka_producer = KafkaProducer(
-        bootstrap_servers=[f"{config.KAFKA_HOST}:{config.KAFKA_PORT}"]
+       bootstrap_servers=[f"{config.KAFKA_HOST}:{config.KAFKA_PORT}"]
     )
 
 
