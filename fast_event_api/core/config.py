@@ -25,4 +25,4 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Сообщения об ошибках
 class ErrorMessage:
-    FILM_NOT_FOUND = "Film(s) not found"
+    STORAGE_NOT_AVAILABLE = "Storage not available"
