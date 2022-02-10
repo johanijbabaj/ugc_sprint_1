@@ -124,6 +124,7 @@ services:
     depends_on:
       - postgres_auth
       - redis_auth
+    restart: always
 
   postgres_auth:
     image: postgres:13-alpine
@@ -149,6 +150,7 @@ services:
     networks:
       - movies_network
     command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+
 
 volumes:
   static_volume:
