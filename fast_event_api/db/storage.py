@@ -28,8 +28,6 @@ class KafkaStorage(AbstractStorage):
         self.__conn = kafka_conn
 
     def send_message(self, topic, key, value):
-        key = str(key).encode('utf8')
-        value = json.dumps(value).encode('utf8')
         try:
             self.__conn.send(topic, key=key, value=value)
         except Exception as e:
