@@ -27,7 +27,7 @@ class KafkaStorage(AbstractStorage):
     def __init__(self, kafka_conn: KafkaProducer = Depends(get_kafka)):
         self.__conn = kafka_conn
 
-    def send_message(self, topic, key, value):
+    def send(self, topic, key, value):
         try:
             self.__conn.send(topic, key=key, value=value)
         except Exception as e:
