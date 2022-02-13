@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router.post("/film/bookmarks")
+@router.post("/bookmarks")
 def bookmark_add(
     bookmark: FilmBookmark,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
@@ -37,7 +37,7 @@ def bookmark_add(
     return HTTPStatus.ACCEPTED
 
 
-@router.post("/film/ratings")
+@router.post("/ratings")
 def rating_add(
     rating: FilmRating,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
@@ -55,7 +55,7 @@ def rating_add(
     return HTTPStatus.ACCEPTED
 
 
-@router.post("film/progress")
+@router.post("/progress")
 def progress_add(
     progress: FilmProgress,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
