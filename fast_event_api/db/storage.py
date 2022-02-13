@@ -1,3 +1,4 @@
+import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -6,6 +7,8 @@ from fastapi import Depends
 from kafka import KafkaProducer
 
 kafka_producer: Optional[KafkaProducer] = None
+
+logger = logging.getLogger(__name__)
 
 
 def get_kafka() -> KafkaProducer:
@@ -24,11 +27,14 @@ class KafkaStorage(AbstractStorage):
     def __init__(self, kafka_conn: KafkaProducer = Depends(get_kafka)):
         self.__conn = kafka_conn
 
-    def send(self, some_topic, some_key, some_value):
-        if self.__conn.bootstrap_connected():
-            self.__conn.send(topic=some_topic, key=some_key, value=some_value)
+    def send(self, topic, key, value):
+        try:
+            self.__conn.send(topic, key=key, value=value)
+        except Exception as e:
+            logger.error(f"Ошибка при добавлении сообщения: {repr(e)}")
+            return False
+        else:
             return True
-        return False
 
 
 def get_storage() -> AbstractStorage:

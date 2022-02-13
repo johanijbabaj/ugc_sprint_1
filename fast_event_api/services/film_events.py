@@ -24,7 +24,7 @@ class FilmEventsService(AbstractService):
         logger.info(message)
         curtime = time()
         logger.info(f"Время начала: {curtime}")
-        key = str(message.user_id) + str(message.film_id)
+        key = f"{message.user_id}{message.film_id}"
         event_message = message.toJSON()
         result = self.storage.send(message._topic, key.encode(), event_message)
         if result:
