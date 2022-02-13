@@ -19,35 +19,8 @@ services:
     depends_on:
       - redis_ugc
       - kafka
-      - zookeeper
-
-  flask_auth_api:
-    build:
-      context: auth_api/flask_app
-      dockerfile: Dockerfile
-    container_name: flask_auth_api
-    env_file:
-      - auth.env
-    volumes:
-      - ./auth_api/flask_app:/auth_api/flask_app
-    restart: unless-stopped
-    networks:
-      - movies_network
-    depends_on:
-      - redis_ugc
-      - postgres_auth
-
-  postgres_auth:
-    image: postgres:13-alpine
-    container_name: postgres_auth
-    env_file:
-      - db_auth.env
-    volumes:
-      - ./auth_api/postgres_auth/pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - movies_network
+      - zookeeper-kafka
+      - zookeeper-clickhouse
 
   redis_ugc:
     build:
@@ -62,9 +35,9 @@ services:
       - movies_network
     command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
 
-  zookeeper:
+  zookeeper-kafka:
     image: confluentinc/cp-zookeeper:6.2.0
-    container_name: zookeeper
+    container_name: zookeeper-kafka
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -78,7 +51,7 @@ services:
       - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper-kafka:2181"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -87,15 +60,62 @@ services:
     networks:
       - movies_network
 
-  clickhouse:
-    image: yandex/clickhouse-server
-    container_name: clickhouse
-    restart: always
+  zookeeper-clickhouse:
+    image: zookeeper:3.5
+    container_name: zookeeper-clickhouse
+    hostname: zookeeper
+    networks:
+      - movies_network
+
+  clickhouse-node1:
+    image: yandex/clickhouse-server:20.12.8.5
+    container_name: clickhouse-node1
+    hostname: clickhouse-node1
     ports:
       - "8123:8123"
       - "9000:9000"
+    volumes:
+      - ./fast_event_api/clickhouse/node1:/etc/clickhouse-server
+      - ./fast_event_api/clickhouse/scripts:/tmp
+    depends_on:
+      - zookeeper-clickhouse
     networks:
       - movies_network
+
+  clickhouse-node2:
+    image: yandex/clickhouse-server:20.12.8.5
+    container_name: clickhouse-node2
+    hostname: clickhouse-node2
+    volumes:
+      - ./fast_event_api/clickhouse/node2:/etc/clickhouse-server
+    depends_on:
+      - zookeeper-clickhouse
+    networks:
+      - movies_network
+
+  clickhouse-node3:
+    image: yandex/clickhouse-server:20.12.8.5
+    container_name: clickhouse-node3
+    hostname: clickhouse-node3
+    volumes:
+      - ./fast_event_api/clickhouse/node3:/etc/clickhouse-server
+      - ./fast_event_api/clickhouse/scripts:/tmp
+    depends_on:
+      - zookeeper-clickhouse
+    networks:
+      - movies_network
+
+  clickhouse-node4:
+    image: yandex/clickhouse-server:20.12.8.5
+    container_name: clickhouse-node4
+    hostname: clickhouse-node4
+    volumes:
+      - ./fast_event_api/clickhouse/node4:/etc/clickhouse-server
+    depends_on:
+      - zookeeper-clickhouse
+    networks:
+      - movies_network
+
 
 volumes:
   static_volume:

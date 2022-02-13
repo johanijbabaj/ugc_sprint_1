@@ -5,3 +5,4 @@ requests==2.25.1
 uvicorn==0.12.2
 uvloop==0.16.0
 kafka-python==2.0.2
+clickhouse-driver==0.2.2

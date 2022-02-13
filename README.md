@@ -34,3 +34,10 @@ https://github.com/johanijbabaj/Auth_sprint_2.git
 Предварительно:
 * убрать у файла [here](tests/auth_api/auth.env.example) расширение example
 * убрать у файла [here](tests/auth_api/db_auth.env.example) расширение example
+
+## Запуск docker-compose с сервисом UGC:
+ETL по перекачки данных из Kafka в Clickhouse выполнен с помощью таблиц в clickhouse с [движком kafka](https://clickhouse.com/docs/ru/engines/table-engines/integrations/kafka/).  
+Для создания необходимых таблиц в Clickhouse необходимо выполнить команды:
+* Выполнить команду <code>docker exec -ti clickhouse-node1 bash /tmp/init-db-shard1.sh</code>
+* Выполнить команду <code>docker exec -ti clickhouse-node3 bash /tmp/init-db-shard2.sh</code>
+
