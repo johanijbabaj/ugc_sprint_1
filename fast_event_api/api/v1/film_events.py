@@ -7,27 +7,27 @@ from http import HTTPStatus
 
 from core.config import ErrorMessage
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, responses
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer
 from models.film_events import FilmBookmark, FilmProgress, FilmRating
 from services.film_events import FilmEventsService, get_film_events_service
 
 # Объект router, в котором регистрируем обработчики
 router = APIRouter()
 logger = logging.getLogger(__name__)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+http_bearer = HTTPBearer()
 
 
 @router.post("/bookmarks")
 def bookmark_add(
     bookmark: FilmBookmark,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
-    token: str = Depends(oauth2_scheme),
+    token: bytes = Depends(http_bearer),
 ):
     """
     Метод для добавления фильма в закладки
     """
 
-    result = film_events_service.post(bookmark)
+    result = film_events_service.post(bookmark, token)
     logger.info(result)
     if not result:
         raise HTTPException(
@@ -41,11 +41,12 @@ def bookmark_add(
 def rating_add(
     rating: FilmRating,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
+    token: bytes = Depends(http_bearer),
 ):
     """
     Метод для установки рейтинга фильму
     """
-    result = film_events_service.post(rating)
+    result = film_events_service.post(rating, token)
     logger.info(result)
     if not result:
         raise HTTPException(
@@ -59,11 +60,12 @@ def rating_add(
 def progress_add(
     progress: FilmProgress,
     film_events_service: FilmEventsService = Depends(get_film_events_service),
+    token: bytes = Depends(http_bearer),
 ):
     """
     Метод для передачи прогресса просмотра фильма
     """
-    result = film_events_service.post(progress)
+    result = film_events_service.post(progress, token)
     logger.info(result)
     if not result:
         raise HTTPException(

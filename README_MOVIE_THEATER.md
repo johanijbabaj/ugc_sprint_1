@@ -24,6 +24,11 @@ https://github.com/johanijbabaj/Auth_sprint_1/
 - Настройка переменных окружения. Создайте файл auth.env, в качестве примера можно взять файл auth.env.example.
 - Файл необходимо поместить в каталог auth_api/flask_app/
 
+## Настройка обработки событий генерации контента клиента
+Для создания необходимых таблиц в Clickhouse необходимо выполнить команды:
+* Выполнить команду <code>docker exec -ti clickhouse-node1 bash /tmp/init-db-shard1.sh</code>
+* Выполнить команду <code>docker exec -ti clickhouse-node3 bash /tmp/init-db-shard2.sh</code>
+
 # Взаимодействие
 - Доступ к документации FastAPI осуществляется через http://localhost:8000/api/openapi
 - Доступ к админке Django осуществляется через http://localhost/admin/ (user admin, password 123456)
