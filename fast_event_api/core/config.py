@@ -17,7 +17,7 @@ REDIS_AUTH = os.getenv("REDIS_AUTH", "password")
 
 # Настройки Kafka
 KAFKA_HOST = os.getenv("KAFKA_HOST", "kafka")
-KAFKA_PORT = int(os.getenv("KAFKA_PORT", 29092))
+KAFKA_PORT = int(os.getenv("KAFKA_PORT", 9092))
 
 # Корень проекта
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

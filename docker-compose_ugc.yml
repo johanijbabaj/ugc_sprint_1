@@ -17,23 +17,9 @@ services:
       - "8000:8000"
     command: ["python", "main.py"]
     depends_on:
-      - redis_ugc
       - kafka
       - zookeeper-kafka
       - zookeeper-clickhouse
-
-  redis_ugc:
-    build:
-      context: auth_api/redis_auth
-      dockerfile: Dockerfile
-    container_name: redis_auth
-    volumes:
-      - ./auth_api/redis_auth/conf/etc:/usr/local/etc/redis
-    #ports:
-    #- "6379:6379"
-    networks:
-      - movies_network
-    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
 
   zookeeper-kafka:
     image: confluentinc/cp-zookeeper:6.2.0
@@ -53,7 +39,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper-kafka:2181"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -68,7 +54,7 @@ services:
       - movies_network
 
   clickhouse-node1:
-    image: yandex/clickhouse-server:20.12.8.5
+    image: yandex/clickhouse-server
     container_name: clickhouse-node1
     hostname: clickhouse-node1
     ports:
@@ -83,7 +69,7 @@ services:
       - movies_network
 
   clickhouse-node2:
-    image: yandex/clickhouse-server:20.12.8.5
+    image: yandex/clickhouse-server
     container_name: clickhouse-node2
     hostname: clickhouse-node2
     volumes:
@@ -94,7 +80,7 @@ services:
       - movies_network
 
   clickhouse-node3:
-    image: yandex/clickhouse-server:20.12.8.5
+    image: yandex/clickhouse-server
     container_name: clickhouse-node3
     hostname: clickhouse-node3
     volumes:
@@ -106,7 +92,7 @@ services:
       - movies_network
 
   clickhouse-node4:
-    image: yandex/clickhouse-server:20.12.8.5
+    image: yandex/clickhouse-server
     container_name: clickhouse-node4
     hostname: clickhouse-node4
     volumes:

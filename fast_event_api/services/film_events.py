@@ -1,7 +1,9 @@
 import logging
+import uuid
 from functools import lru_cache
 from time import sleep, time
 
+import jwt
 import orjson
 from db.cache import MemoryCache, get_cache
 from db.storage import AbstractStorage, get_storage
@@ -20,18 +22,18 @@ class FilmEventsService(AbstractService):
         self.name = "film_events"
         super().__init__(*args, **kwargs)
 
-    def post(self, message):
+    def post(self, message, token):
         logger.info(message)
-        curtime = time()
-        logger.info(f"Время начала: {curtime}")
+        token_bytes = token.credentials.encode()
+        #  Получаем user_id из токена
+        decoded_payload = jwt.decode(token_bytes, options={"verify_signature": False})
+        message.user_id = decoded_payload.get("sub")
         key = f"{message.user_id}{message.film_id}"
         event_message = message.toJSON()
-        result = self.storage.send(message._topic, key.encode(), event_message)
+        event_topic = message._topic
+        result = self.storage.send(event_topic, key.encode(), event_message)
         if result:
-            curtimeend = time()
-            logger.info(
-                f"Время окончания: {curtimeend}. Записано сообщение {event_message} в топик {message._topic}"
-            )
+            logger.info(f"Записано сообщение {event_message} в топик {event_topic}")
         return result
 
 
