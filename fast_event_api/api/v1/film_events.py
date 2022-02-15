@@ -6,7 +6,7 @@ import logging
 from http import HTTPStatus
 
 from core.config import ErrorMessage
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, responses
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 from models.film_events import FilmBookmark, FilmProgress, FilmRating
 from services.film_events import FilmEventsService, get_film_events_service

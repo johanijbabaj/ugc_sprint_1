@@ -1,6 +1,5 @@
 from abc import ABC
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from models._base import OrjsonModel

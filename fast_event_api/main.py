@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from kafka import KafkaProducer
 
-import redis
 from redis import Redis
 
 logger = logging.getLogger(__name__)

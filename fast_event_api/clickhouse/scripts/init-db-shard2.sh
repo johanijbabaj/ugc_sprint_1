@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS shard.kafka_ratings (
   ) ENGINE = Kafka SETTINGS kafka_broker_list = 'kafka:29092',
                             kafka_topic_list = 'ratings',
                             kafka_group_name = 'group1',
-                            kafka_format = 'JSONEachRow';
+                            kafka_format = 'JSONEachRow',
+                            kafka_max_block_size = 1048576;
 
 CREATE TABLE IF NOT EXISTS shard.ratings_store(
     user_id UUID,
